@@ -13,6 +13,11 @@
 
 package mem
 
+import (
+	"errors"
+	"os"
+)
+
 type Dir interface {
 	Len() int
 	Names() []string
@@ -27,6 +32,20 @@ func RemoveFromMemDir(dir *FileData, f *FileData) {
 
 func AddToMemDir(dir *FileData, f *FileData) {
 	dir.memDir.Add(f)
+}
+
+func ReadMemDir(dir *FileData) ([]os.FileInfo, error) {
+	if !dir.dir {
+		return nil, &os.PathError{Op: "readdir", Path: dir.name, Err: errors.New("not a dir")}
+	}
+	dir.Lock()
+	files := dir.memDir.Files()
+	dir.Unlock()
+	fileInfos := make([]os.FileInfo, len(files))
+	for i := range files {
+		fileInfos[i] = &FileInfo{files[i]}
+	}
+	return fileInfos, nil
 }
 
 func InitializeDir(d *FileData) {

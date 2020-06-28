@@ -104,6 +104,65 @@ func checkPathError(t *testing.T, err error, op string) {
 	}
 }
 
+func TestMemFsRename(t *testing.T) {
+	memFs := &MemMapFs{}
+
+	const (
+		oldPath        = "/old"
+		newPath        = "/new"
+		fileName       = "afero.txt"
+		subDirName     = "subdir"
+		subDirFileName = "subafero.txt"
+	)
+	err := memFs.Mkdir(oldPath, 0700)
+	if err != nil {
+		t.Fatal(err)
+	}
+	oldFilePath := filepath.Join(oldPath, fileName)
+	_, err = memFs.Create(oldFilePath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	oldSubDirPath := filepath.Join(oldPath, subDirName)
+	err = memFs.Mkdir(oldSubDirPath, 0700)
+	if err != nil {
+		t.Fatal(err)
+	}
+	oldSubDirFilePath := filepath.Join(oldPath, subDirName, subDirFileName)
+	_, err = memFs.Create(oldSubDirFilePath)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = memFs.Rename(oldPath, newPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	fmt.Println("MemFs contents:")
+	memFs.List()
+	fmt.Println()
+
+	newFilePath := filepath.Join(newPath, fileName)
+	newSubDirFilePath := filepath.Join(newPath, subDirName, subDirFileName)
+	_, err = memFs.Stat(newFilePath)
+	if err != nil {
+		t.Errorf("File should exist in new directory %q but received error: %s", newFilePath, err)
+	}
+	_, err = memFs.Stat(newSubDirFilePath)
+	if err != nil {
+		t.Errorf("File should exist in new sub directory %q but received error: %s", newSubDirFilePath, err)
+	}
+
+	_, err = memFs.Stat(oldFilePath)
+	if err == nil {
+		t.Errorf("File should not exist in old directory %q", oldFilePath)
+	}
+	_, err = memFs.Stat(oldSubDirFilePath)
+	if err == nil {
+		t.Errorf("File should not exist in old sub directory %q", oldSubDirFilePath)
+	}
+}
+
 // Ensure os.O_EXCL is correctly handled.
 func TestOpenFileExcl(t *testing.T) {
 	const fileName = "/myFileTest"

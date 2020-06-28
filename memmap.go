@@ -293,22 +293,42 @@ func (m *MemMapFs) Rename(oldname, newname string) error {
 	}
 
 	m.mu.RLock()
-	defer m.mu.RUnlock()
-	if _, ok := m.getData()[oldname]; ok {
-		m.mu.RUnlock()
+	_, ok := m.getData()[oldname]
+	m.mu.RUnlock()
+	if ok {
+		// File existed a moment ago. Upgrade to full write lock, then double-check 'ok' is still true.
 		m.mu.Lock()
-		m.unRegisterWithParent(oldname)
-		fileData := m.getData()[oldname]
-		delete(m.getData(), oldname)
-		mem.ChangeFileName(fileData, newname)
-		m.getData()[newname] = fileData
-		m.registerWithParent(fileData)
-		m.mu.Unlock()
-		m.mu.RLock()
-	} else {
+		defer m.mu.Unlock()
+		_, ok = m.getData()[oldname]
+	}
+	if !ok {
 		return &os.PathError{Op: "rename", Path: oldname, Err: ErrFileNotFound}
 	}
+
+	m.lockFreeRename(oldname, newname, true)
 	return nil
+}
+
+func (m *MemMapFs) lockFreeRename(oldname, newname string, topLevel bool) {
+	fileData := m.getData()[oldname]
+	mem.ChangeFileName(fileData, newname)
+	m.getData()[newname] = fileData
+	if topLevel {
+		// only change the top-level file's parent info, all other relationships remain the same
+		m.unRegisterWithParent(oldname)
+		m.registerWithParent(fileData)
+	}
+	delete(m.getData(), oldname)
+	dir, err := mem.ReadMemDir(fileData)
+	if err == nil {
+		for _, f := range dir {
+			m.lockFreeRename(
+				filepath.Join(oldname, f.Name()),
+				filepath.Join(newname, f.Name()),
+				false,
+			)
+		}
+	}
 }
 
 func (m *MemMapFs) Stat(name string) (os.FileInfo, error) {
@@ -355,7 +375,7 @@ func (m *MemMapFs) Chtimes(name string, atime time.Time, mtime time.Time) error 
 }
 
 func (m *MemMapFs) List() {
-	for _, x := range m.data {
+	for _, x := range mem.DirMap(m.data).Files() {
 		y := mem.FileInfo{FileData: x}
 		fmt.Println(x.Name(), y.Size())
 	}
