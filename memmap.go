@@ -359,12 +359,14 @@ func (m *MemMapFs) Rename(oldname, newname string) error {
 }
 
 func (m *MemMapFs) lockFreeRename(oldname, newname string, topLevel bool) {
+	if topLevel {
+		// only change the top-level file's parent info, all other relationships remain the same
+		m.unRegisterWithParent(oldname)
+	}
 	fileData := m.getData()[oldname]
 	mem.ChangeFileName(fileData, newname)
 	m.getData()[newname] = fileData
 	if topLevel {
-		// only change the top-level file's parent info, all other relationships remain the same
-		m.unRegisterWithParent(oldname)
 		m.registerWithParent(fileData)
 	}
 	delete(m.getData(), oldname)
