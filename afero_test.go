@@ -57,22 +57,24 @@ func tmpFile(fs Fs) File {
 //Read with length 0 should not return EOF.
 func TestRead0(t *testing.T) {
 	for _, fs := range Fss {
-		f := tmpFile(fs)
-		defer f.Close()
-		f.WriteString("Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.")
+		t.Run(fs.Name(), func(t *testing.T) {
+			f := tmpFile(fs)
+			defer f.Close()
+			f.WriteString("Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.")
 
-		var b []byte
-		// b := make([]byte, 0)
-		n, err := f.Read(b)
-		if n != 0 || err != nil {
-			t.Errorf("%v: Read(0) = %d, %v, want 0, nil", fs.Name(), n, err)
-		}
-		f.Seek(0, 0)
-		b = make([]byte, 100)
-		n, err = f.Read(b)
-		if n <= 0 || err != nil {
-			t.Errorf("%v: Read(100) = %d, %v, want >0, nil", fs.Name(), n, err)
-		}
+			var b []byte
+			// b := make([]byte, 0)
+			n, err := f.Read(b)
+			if n != 0 || err != nil {
+				t.Errorf("%v: Read(0) = %d, %v, want 0, nil", fs.Name(), n, err)
+			}
+			f.Seek(0, 0)
+			b = make([]byte, 100)
+			n, err = f.Read(b)
+			if n <= 0 || err != nil {
+				t.Errorf("%v: Read(100) = %d, %v, want >0, nil", fs.Name(), n, err)
+			}
+		})
 	}
 }
 
