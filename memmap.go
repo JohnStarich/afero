@@ -251,7 +251,16 @@ func (m *MemMapFs) Remove(name string) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
-	if _, ok := m.getData()[name]; ok {
+	if f, ok := m.getData()[name]; ok {
+		if mem.GetFileInfo(f).IsDir() {
+			dir, err := mem.ReadMemDir(f)
+			if err != nil {
+				return &os.PathError{Op: "remove", Path: name, Err: err}
+			}
+			if len(dir) != 0 {
+				return &os.PathError{Op: "remove", Path: name, Err: ErrNotEmpty}
+			}
+		}
 		err := m.unRegisterWithParent(name)
 		if err != nil {
 			return &os.PathError{Op: "remove", Path: name, Err: err}

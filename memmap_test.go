@@ -531,3 +531,20 @@ func TestMemFsUnexpectedEOF(t *testing.T) {
 		t.Fatal("Expected ErrUnexpectedEOF")
 	}
 }
+
+func TestMemFsRemoveNonEmptyDir(t *testing.T) {
+	memFs := &MemMapFs{}
+
+	err := memFs.MkdirAll("/a/b", 0700)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = memFs.Create("/a/b/c")
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = memFs.Remove("/a/b")
+	if !IsNotEmpty(err) {
+		t.Errorf("Removing intermediate directory should fail with 'not empty': %s", err)
+	}
+}

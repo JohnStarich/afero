@@ -26,6 +26,7 @@ import (
 	"errors"
 	"io"
 	"os"
+	"syscall"
 	"time"
 )
 
@@ -105,4 +106,11 @@ var (
 	ErrFileNotFound      = os.ErrNotExist
 	ErrFileExists        = os.ErrExist
 	ErrDestinationExists = os.ErrExist
+	ErrNotEmpty          = syscall.ENOTEMPTY
 )
+
+// IsNotEmpty returns a boolean indicating whether the error is known to report when removing a non-empty directory. It is satisfied by ErrNotEmpty as well as some syscall errors.
+func IsNotEmpty(err error) bool {
+	pathErr, ok := err.(*os.PathError)
+	return err == ErrNotEmpty || (ok && pathErr.Unwrap() == ErrNotEmpty)
+}
