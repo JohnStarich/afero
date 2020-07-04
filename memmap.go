@@ -305,6 +305,11 @@ func (m *MemMapFs) Rename(oldname, newname string) error {
 		return &os.PathError{Op: "rename", Path: oldname, Err: ErrFileNotFound}
 	}
 
+	newParentDir := filepath.Dir(newname)
+	if _, ok := m.getData()[newParentDir]; !ok {
+		return &os.PathError{Op: "rename", Path: newParentDir, Err: ErrFileNotFound}
+	}
+
 	m.lockFreeRename(oldname, newname, true)
 	return nil
 }

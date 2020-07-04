@@ -109,7 +109,7 @@ func TestMemFsRename(t *testing.T) {
 
 	const (
 		oldPath        = "/old"
-		newPath        = "/new"
+		newPath        = "/prefix/new"
 		fileName       = "afero.txt"
 		subDirName     = "subdir"
 		subDirFileName = "subafero.txt"
@@ -118,6 +118,15 @@ func TestMemFsRename(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	err = memFs.Rename(oldPath, newPath)
+	if err == nil {
+		t.Fatal("Missing parent dir for new path should return an error")
+	}
+	err = memFs.Mkdir("/prefix", 0700)
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	oldFilePath := filepath.Join(oldPath, fileName)
 	_, err = memFs.Create(oldFilePath)
 	if err != nil {
