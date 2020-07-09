@@ -14,8 +14,8 @@
 package mem
 
 import (
-	"errors"
 	"os"
+	"syscall"
 )
 
 type Dir interface {
@@ -36,7 +36,7 @@ func AddToMemDir(dir *FileData, f *FileData) {
 
 func ReadMemDir(dir *FileData) ([]os.FileInfo, error) {
 	if !dir.dir {
-		return nil, &os.PathError{Op: "readdir", Path: dir.name, Err: errors.New("not a dir")}
+		return nil, &os.PathError{Op: "readdir", Path: dir.name, Err: syscall.ENOTDIR}
 	}
 	dir.Lock()
 	files := dir.memDir.Files()

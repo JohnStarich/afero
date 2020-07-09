@@ -212,6 +212,7 @@ func TestRename(t *testing.T) {
 		if err != nil {
 			t.Fatalf("%s: rename %q, %q failed: %v", fs.Name(), to, from, err)
 		}
+
 		file, err = fs.Create(from)
 		if err != nil {
 			t.Fatalf("%s: open %q failed: %v", fs.Name(), to, err)

@@ -50,6 +50,7 @@ func (*MemMapFs) Name() string { return "MemMapFS" }
 func (m *MemMapFs) Create(name string) (File, error) {
 	name = normalizePath(name)
 	m.mu.Lock()
+	m.lockFreeRemoveAll(name)
 	file := mem.CreateFile(name)
 	m.getData()[name] = file
 	m.registerWithParent(file)
@@ -89,40 +90,13 @@ func (m *MemMapFs) registerWithParent(f *mem.FileData) {
 	}
 	parent := m.findParent(f)
 	if parent == nil {
-		pdir := filepath.Dir(filepath.Clean(f.Name()))
-		err := m.lockfreeMkdir(pdir, 0777)
-		if err != nil {
-			//log.Println("Mkdir error:", err)
-			return
-		}
-		parent, err = m.lockfreeOpen(pdir)
-		if err != nil {
-			//log.Println("Open after Mkdir error:", err)
-			return
-		}
+		panic("parent does not exist for file: " + f.Name())
 	}
 
 	parent.Lock()
 	mem.InitializeDir(parent)
 	mem.AddToMemDir(parent, f)
 	parent.Unlock()
-}
-
-func (m *MemMapFs) lockfreeMkdir(name string, perm os.FileMode) error {
-	name = normalizePath(name)
-	x, ok := m.getData()[name]
-	if ok {
-		// Only return ErrFileExists if it's a file, not a directory.
-		i := mem.FileInfo{FileData: x}
-		if !i.IsDir() {
-			return ErrFileExists
-		}
-	} else {
-		item := mem.CreateDir(name)
-		m.getData()[name] = item
-		m.registerWithParent(item)
-	}
-	return nil
 }
 
 func (m *MemMapFs) Mkdir(name string, perm os.FileMode) error {
@@ -251,7 +225,16 @@ func (m *MemMapFs) Remove(name string) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
-	if _, ok := m.getData()[name]; ok {
+	if f, ok := m.getData()[name]; ok {
+		if mem.GetFileInfo(f).IsDir() {
+			dir, err := mem.ReadMemDir(f)
+			if err != nil {
+				panic("Directory failed to list entries: " + err.Error())
+			}
+			if len(dir) != 0 {
+				return &os.PathError{Op: "remove", Path: name, Err: ErrNotEmpty}
+			}
+		}
 		err := m.unRegisterWithParent(name)
 		if err != nil {
 			return &os.PathError{Op: "remove", Path: name, Err: err}
@@ -264,24 +247,34 @@ func (m *MemMapFs) Remove(name string) error {
 }
 
 func (m *MemMapFs) RemoveAll(path string) error {
-	path = normalizePath(path)
 	m.mu.Lock()
-	m.unRegisterWithParent(path)
+	m.lockFreeRemoveAll(path)
 	m.mu.Unlock()
+	return nil
+}
 
-	m.mu.RLock()
-	defer m.mu.RUnlock()
+func (m *MemMapFs) lockFreeRemoveAll(path string) {
+	path = normalizePath(path)
+	fileData, err := m.lockfreeOpen(path)
+	if err == ErrFileNotFound {
+		return
+	}
+	if err != nil {
+		panic("impossible case: other err from lockfreeOpen")
+	}
+	err = m.unRegisterWithParent(path)
+	if err != nil {
+		panic("failed to unregister with parent: " + err.Error())
+	}
+	defer delete(m.getData(), path)
 
-	for p := range m.getData() {
-		if strings.HasPrefix(p, path) {
-			m.mu.RUnlock()
-			m.mu.Lock()
-			delete(m.getData(), p)
-			m.mu.Unlock()
-			m.mu.RLock()
+	dir, err := mem.ReadMemDir(fileData)
+	if err == nil {
+		for _, f := range dir {
+			m.lockFreeRemoveAll(filepath.Join(path, f.Name()))
 		}
 	}
-	return nil
+	return
 }
 
 func (m *MemMapFs) Rename(oldname, newname string) error {
@@ -290,6 +283,10 @@ func (m *MemMapFs) Rename(oldname, newname string) error {
 
 	if oldname == newname {
 		return nil
+	}
+	if strings.HasPrefix(newname, oldname+FilePathSeparator) {
+		// new path must not be inside the old path
+		return &os.PathError{Op: "rename", Path: newname, Err: os.ErrInvalid}
 	}
 
 	m.mu.RLock()
@@ -310,27 +307,48 @@ func (m *MemMapFs) Rename(oldname, newname string) error {
 		return &os.PathError{Op: "rename", Path: newParentDir, Err: ErrFileNotFound}
 	}
 
-	m.lockFreeRename(oldname, newname, true)
+	// proceed with rename. if newname exists, delete it
+	m.lockFreeRemoveAll(newname)
+
+	m.lockFreeRename(oldname, newname)
 	return nil
 }
 
-func (m *MemMapFs) lockFreeRename(oldname, newname string, topLevel bool) {
-	m.unRegisterWithParent(oldname)
-	fileData := m.getData()[oldname]
-	mem.ChangeFileName(fileData, newname)
-	m.getData()[newname] = fileData
-	m.registerWithParent(fileData)
-	defer delete(m.getData(), oldname)
-	dir, err := mem.ReadMemDir(fileData)
-	if err == nil {
-		for _, f := range dir {
-			m.lockFreeRename(
-				filepath.Join(oldname, f.Name()),
-				filepath.Join(newname, f.Name()),
-				false,
-			)
-		}
+func (m *MemMapFs) lockFreeRename(oldname, newname string) {
+	// 1. add file data to new map location
+	fileData, ok := m.getData()[oldname]
+	if !ok {
+		panic("File not found: " + oldname)
 	}
+	m.getData()[newname] = fileData
+
+	// 2. record children entries before rename
+	dir, err := mem.ReadMemDir(fileData)
+	if err != nil && !IsNotDir(err) {
+		panic(err)
+	}
+
+	// 3. remove old parent directory's child entry
+	if err := m.unRegisterWithParent(oldname); err != nil {
+		panic(err)
+	}
+
+	// 4. rename file itself to the new name
+	mem.ChangeFileName(fileData, newname)
+
+	// 5. add new parent directory's child entry
+	m.registerWithParent(fileData)
+
+	// 6. recurse into children, renaming each one
+	for _, f := range dir {
+		m.lockFreeRename(
+			filepath.Join(oldname, f.Name()),
+			filepath.Join(newname, f.Name()),
+		)
+	}
+
+	// 7. delete old file data from map
+	delete(m.getData(), oldname)
 }
 
 func (m *MemMapFs) Stat(name string) (os.FileInfo, error) {
