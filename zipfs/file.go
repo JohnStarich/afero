@@ -5,6 +5,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"sort"
 	"syscall"
 
 	"github.com/spf13/afero"
@@ -54,6 +55,7 @@ func (f *File) Close() (err error) {
 
 func (f *File) Read(p []byte) (n int, err error) {
 	if f.isdir {
+		log("read: not a dir!", f.Name())
 		return 0, syscall.EISDIR
 	}
 	if f.closed {
@@ -67,6 +69,7 @@ func (f *File) Read(p []byte) (n int, err error) {
 
 func (f *File) ReadAt(p []byte, off int64) (n int, err error) {
 	if f.isdir {
+		log("readat: not a dir!", f.Name())
 		return 0, syscall.EISDIR
 	}
 	if f.closed {
@@ -79,6 +82,7 @@ func (f *File) ReadAt(p []byte, off int64) (n int, err error) {
 
 func (f *File) Seek(offset int64, whence int) (int64, error) {
 	if f.isdir {
+		log("seek: not a dir!", f.Name())
 		return 0, syscall.EISDIR
 	}
 	if f.closed {
@@ -134,6 +138,9 @@ func (f *File) Readdir(count int) (fi []os.FileInfo, err error) {
 			break
 		}
 	}
+	sort.Slice(fi, func(a, b int) bool {
+		return fi[a].Name() < fi[b].Name()
+	})
 	return
 }
 
@@ -148,14 +155,18 @@ func (f *File) Readdirnames(count int) (names []string, err error) {
 			break
 		}
 	}
+	sort.Strings(names)
 	return
 }
 
 func (f *File) Stat() (os.FileInfo, error) {
 	if f.zipfile == nil {
+		log("stating pseudo root")
 		return &pseudoRoot{}, nil
 	}
-	return f.zipfile.FileInfo(), nil
+	info := f.zipfile.FileInfo()
+	log("stating: ", info)
+	return info, nil
 }
 
 func (f *File) Sync() error { return nil }

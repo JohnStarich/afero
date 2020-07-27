@@ -2,25 +2,35 @@ package zipfs
 
 import (
 	"archive/zip"
+	"fmt"
 	"os"
 	"path/filepath"
 	"syscall"
+	"syscall/js"
 	"time"
 
 	"github.com/spf13/afero"
 )
+
+func log(args ...interface{}) {
+	js.Global().Get("console").Call("warn", "zipfs: "+fmt.Sprint(args...))
+}
 
 type Fs struct {
 	r     *zip.Reader
 	files map[string]map[string]*zip.File
 }
 
-func splitpath(name string) (dir, file string) {
-	name = filepath.ToSlash(name)
-	if len(name) == 0 || name[0] != '/' {
-		name = "/" + name
+func normalizePath(path string) string {
+	path = filepath.ToSlash(path)
+	if len(path) == 0 || path[0] != '/' {
+		path = "/" + path
 	}
-	name = filepath.Clean(name)
+	return filepath.Clean(path)
+}
+
+func splitpath(name string) (dir, file string) {
+	name = normalizePath(name)
 	dir, file = filepath.Split(name)
 	dir = filepath.Clean(dir)
 	return
@@ -29,21 +39,42 @@ func splitpath(name string) (dir, file string) {
 func New(r *zip.Reader) afero.Fs {
 	fs := &Fs{r: r, files: make(map[string]map[string]*zip.File)}
 	for _, file := range r.File {
-		d, f := splitpath(file.Name)
-		if _, ok := fs.files[d]; !ok {
-			fs.files[d] = make(map[string]*zip.File)
-		}
-		if _, ok := fs.files[d][f]; !ok {
-			fs.files[d][f] = file
-		}
 		if file.FileInfo().IsDir() {
-			dirname := filepath.Join(d, f)
-			if _, ok := fs.files[dirname]; !ok {
-				fs.files[dirname] = make(map[string]*zip.File)
-			}
+			fs.mkdirAll(file.Name)
+		} else {
+			d, f := splitpath(file.Name)
+			fs.mkdirAll(d)
+			fs.files[d][f] = file
 		}
 	}
 	return fs
+}
+
+func (fs *Fs) mkdirAll(path string) {
+	const slash = "/"
+	var dirs []string
+	for dir := normalizePath(path); dir != slash; dir, _ = splitpath(dir) {
+		dirs = append(dirs, dir)
+	}
+	if fs.files[slash] == nil { // ensure root dir
+		fs.files[slash] = make(map[string]*zip.File)
+	}
+
+	parentFiles := fs.files[slash]
+	for i := len(dirs) - 1; i >= 0; i-- {
+		dir := dirs[i]
+
+		// ensure parent file entry
+		_, base := splitpath(dir)
+		if _, ok := parentFiles[base]; !ok {
+			parentFiles[base] = &zip.File{FileHeader: zip.FileHeader{Name: dir + "/"}}
+		}
+
+		if _, ok := fs.files[dir]; !ok { // ensure directory exists
+			fs.files[dir] = make(map[string]*zip.File)
+		}
+		parentFiles = fs.files[dir]
+	}
 }
 
 func (fs *Fs) Create(name string) (afero.File, error) { return nil, syscall.EPERM }
@@ -64,7 +95,12 @@ func (fs *Fs) Open(name string) (afero.File, error) {
 	if !ok {
 		return nil, &os.PathError{Op: "stat", Path: name, Err: syscall.ENOENT}
 	}
-	return &File{fs: fs, zipfile: file, isdir: file.FileInfo().IsDir()}, nil
+	log("opening file ", name, " : ", file.FileInfo().Mode())
+	retFile := &File{fs: fs, zipfile: file, isdir: file.FileInfo().IsDir()}
+	if !retFile.isdir && name == "/go/src/unsafe" {
+		log("isdir IS WRONG")
+	}
+	return retFile, nil
 }
 
 func (fs *Fs) OpenFile(name string, flag int, perm os.FileMode) (afero.File, error) {
@@ -92,6 +128,7 @@ func (p *pseudoRoot) Sys() interface{}   { return nil }
 func (fs *Fs) Stat(name string) (os.FileInfo, error) {
 	d, f := splitpath(name)
 	if f == "" {
+		log("fs.stating pseudo root ", name)
 		return &pseudoRoot{}, nil
 	}
 	if _, ok := fs.files[d]; !ok {
@@ -101,6 +138,7 @@ func (fs *Fs) Stat(name string) (os.FileInfo, error) {
 	if !ok {
 		return nil, &os.PathError{Op: "stat", Path: name, Err: syscall.ENOENT}
 	}
+	log("fs.stating: ", name, " isdir = ", file.FileInfo().IsDir())
 	return file.FileInfo(), nil
 }
 
