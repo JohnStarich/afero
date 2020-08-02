@@ -52,19 +52,39 @@ func (m *MemMapFs) getData() map[string]*mem.FileData {
 func (*MemMapFs) Name() string { return "MemMapFS" }
 
 func (m *MemMapFs) Create(name string) (File, error) {
+	const createPerm = 0666
+
 	name = normalizePath(name)
 	err := m.requireParentDirectory("create", name)
 	if err != nil {
 		return nil, err
 	}
 
-	m.mu.Lock()
-	m.lockFreeRemoveAll(name)
-	file := mem.CreateFile(name)
-	m.getData()[name] = file
-	m.registerWithParent(file)
-	m.mu.Unlock()
-	return mem.NewFileHandle(file), nil
+	info, err := m.Stat(name)
+	switch {
+	case os.IsNotExist(err):
+		// if not exist or is a file, truncate
+		m.mu.Lock()
+		m.lockFreeRemoveAll(name)
+		file := mem.CreateFile(name)
+		mem.SetMode(file, createPerm)
+		m.getData()[name] = file
+		m.registerWithParent(file)
+		m.mu.Unlock()
+		return mem.NewFileHandle(file), nil
+	case err != nil:
+		return nil, err
+	case info.IsDir():
+		return nil, &os.PathError{Op: "create", Path: name, Err: ErrIsDir}
+	default:
+		// exists and is a file
+		m.mu.RLock()
+		fileData := m.getData()[name]
+		m.mu.RUnlock()
+		file := mem.NewFileHandle(fileData)
+		err := file.Truncate(0)
+		return file, err
+	}
 }
 
 func (m *MemMapFs) unRegisterWithParent(fileName string) error {

@@ -713,3 +713,46 @@ func TestMemFsIllegalOpenFile(t *testing.T) {
 		t.Error("OpenFile must only set permission bits:", info.Mode())
 	}
 }
+
+func TestMemFsCreatePerm(t *testing.T) {
+	t.Parallel()
+
+	fs := NewMemMapFs()
+	_, err := fs.Create("/foo")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	info, err := fs.Stat("/foo")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if info.Mode() != 0666 {
+		t.Error("Create for new files should set permission to 0666:", info.Mode())
+	}
+}
+
+func TestMemFsCreateIsDir(t *testing.T) {
+	t.Parallel()
+
+	fs := NewMemMapFs()
+	if err := fs.Mkdir("/foo", 0700); err != nil {
+		t.Fatal(err)
+	}
+
+	_, err := fs.Create("/foo")
+	pathErr, ok := err.(*os.PathError)
+	if !ok {
+		t.Fatal("Error is not a path error", err)
+	}
+	if pathErr.Op != "create" {
+		t.Error("PathError.Op should be 'create':", pathErr.Op)
+	}
+	if pathErr.Path != "/foo" {
+		t.Error("PathError.Path should be '/foo':", pathErr.Path)
+	}
+	if pathErr.Err != ErrIsDir {
+		t.Error("PathError.Err should be 'ErrIsDir':", pathErr.Err)
+	}
+}
