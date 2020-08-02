@@ -746,8 +746,8 @@ func TestMemFsCreateIsDir(t *testing.T) {
 	if !ok {
 		t.Fatal("Error is not a path error", err)
 	}
-	if pathErr.Op != "create" {
-		t.Error("PathError.Op should be 'create':", pathErr.Op)
+	if pathErr.Op != "open" {
+		t.Error("PathError.Op should be 'open':", pathErr.Op)
 	}
 	if pathErr.Path != "/foo" {
 		t.Error("PathError.Path should be '/foo':", pathErr.Path)
