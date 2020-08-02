@@ -554,6 +554,16 @@ func TestMemFsMkdirWithoutParent(t *testing.T) {
 	if !os.IsNotExist(err) {
 		t.Error("Mkdir should fail if parent directory does not exist:", err)
 	}
+	pathErr, ok := err.(*os.PathError)
+	if !ok {
+		t.Fatalf("Mkdir error should be a path error, found: %T", err)
+	}
+	if pathErr.Op != "mkdir" {
+		t.Error("Invalid op for mkdir error:", pathErr.Op)
+	}
+	if pathErr.Path != "/a/b" {
+		t.Error("Invalid path for mkdir error:", pathErr.Path)
+	}
 
 	_, err = fs.Create("/a")
 	if err != nil {

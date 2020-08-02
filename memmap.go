@@ -109,6 +109,9 @@ func (m *MemMapFs) requireParentDirectory(operationName, path string) error {
 	parentPath := filepath.Dir(path)
 	parent, parentErr := m.Stat(parentPath)
 	if parentErr != nil {
+		if os.IsNotExist(parentErr) {
+			return &os.PathError{Op: operationName, Path: parentPath, Err: os.ErrNotExist}
+		}
 		return parentErr
 	}
 	if !parent.IsDir() {
