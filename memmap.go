@@ -75,7 +75,7 @@ func (m *MemMapFs) Create(name string) (File, error) {
 	case err != nil:
 		return nil, err
 	case info.IsDir():
-		return nil, &os.PathError{Op: "create", Path: name, Err: ErrIsDir}
+		return nil, &os.PathError{Op: "open", Path: name, Err: ErrIsDir} // uses 'open' in os.Create
 	default:
 		// exists and is a file
 		m.mu.RLock()
