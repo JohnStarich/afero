@@ -776,3 +776,18 @@ func TestMemFsMkdirModTime(t *testing.T) {
 		t.Error("Mod time should be close to now, but time apart was", elapsed)
 	}
 }
+
+func TestMemFsChmodNormalizePath(t *testing.T) {
+	t.Parallel()
+
+	fs := NewMemMapFs()
+	const file = "hello"
+	if err := fs.Mkdir(file, 0700); err != nil {
+		t.Fatal(err)
+	}
+
+	err := fs.Chmod(file, 0)
+	if err != nil {
+		t.Error("Failed to run chmod:", err)
+	}
+}
