@@ -55,7 +55,7 @@ func (m *MemMapFs) Create(name string) (File, error) {
 	const createPerm = 0666
 
 	name = normalizePath(name)
-	err := m.requireParentDirectory("create", name)
+	err := m.requireParentDirectory("open", name)
 	if err != nil {
 		return nil, err
 	}

@@ -606,6 +606,17 @@ func TestMemFsCreateWithoutParent(t *testing.T) {
 	if !IsNotDir(err) {
 		t.Error("Create should fail if parent is not a directory:", err)
 	}
+	pathErr, ok := err.(*os.PathError)
+	if !ok {
+		t.Fatalf("Create error should be a path error, found: %T", err)
+	}
+	if pathErr.Op != "open" {
+		t.Error("Invalid op for create ('open') error:", pathErr.Op)
+	}
+	if pathErr.Path != "/a/b" {
+		// path errors should be the same as OsFs, which is the passed in path and not a parent path
+		t.Error("Invalid path for create error:", pathErr.Path)
+	}
 }
 
 func TestMemFsRemoveNonEmptyDir(t *testing.T) {
