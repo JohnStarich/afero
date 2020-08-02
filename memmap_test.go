@@ -561,7 +561,8 @@ func TestMemFsMkdirWithoutParent(t *testing.T) {
 	if pathErr.Op != "mkdir" {
 		t.Error("Invalid op for mkdir error:", pathErr.Op)
 	}
-	if pathErr.Path != "/a/b" {
+	if pathErr.Path != "/a/b/c" {
+		// path errors should be the same as OsFs, which is the passed in path and not a parent path
 		t.Error("Invalid path for mkdir error:", pathErr.Path)
 	}
 
@@ -573,6 +574,17 @@ func TestMemFsMkdirWithoutParent(t *testing.T) {
 	err = fs.Mkdir("/a/b", 0700)
 	if !IsNotDir(err) {
 		t.Error("Mkdir should fail if parent is not a directory:", err)
+	}
+	pathErr, ok = err.(*os.PathError)
+	if !ok {
+		t.Fatalf("Mkdir error should be a path error, found: %T", err)
+	}
+	if pathErr.Op != "mkdir" {
+		t.Error("Invalid op for mkdir error:", pathErr.Op)
+	}
+	if pathErr.Path != "/a/b" {
+		// path errors should be the same as OsFs, which is the passed in path and not a parent path
+		t.Error("Invalid path for mkdir error:", pathErr.Path)
 	}
 }
 
