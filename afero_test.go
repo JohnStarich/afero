@@ -731,3 +731,17 @@ func TestIsNotDir(t *testing.T) {
 		t.Error("IsNotDir(PathError{ErrNotDir}) should be true")
 	}
 }
+
+func TestIsDirErr(t *testing.T) {
+	if IsDirErr(nil) {
+		t.Error("IsDirErr(nil) should be false")
+	}
+
+	if !IsDirErr(ErrIsDir) {
+		t.Error("IsDirErr(ErrIsDir) should be true")
+	}
+
+	if !IsDirErr(&os.PathError{Err: ErrIsDir}) {
+		t.Error("IsDirErr(PathError{ErrIsDir}) should be true")
+	}
+}

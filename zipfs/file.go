@@ -54,7 +54,7 @@ func (f *File) Close() (err error) {
 
 func (f *File) Read(p []byte) (n int, err error) {
 	if f.isdir {
-		return 0, syscall.EISDIR
+		return 0, afero.ErrIsDir
 	}
 	if f.closed {
 		return 0, afero.ErrFileClosed
@@ -67,7 +67,7 @@ func (f *File) Read(p []byte) (n int, err error) {
 
 func (f *File) ReadAt(p []byte, off int64) (n int, err error) {
 	if f.isdir {
-		return 0, syscall.EISDIR
+		return 0, afero.ErrIsDir
 	}
 	if f.closed {
 		return 0, afero.ErrFileClosed
@@ -79,7 +79,7 @@ func (f *File) ReadAt(p []byte, off int64) (n int, err error) {
 
 func (f *File) Seek(offset int64, whence int) (int64, error) {
 	if f.isdir {
-		return 0, syscall.EISDIR
+		return 0, afero.ErrIsDir
 	}
 	if f.closed {
 		return 0, afero.ErrFileClosed

@@ -107,6 +107,7 @@ var (
 	ErrFileExists        = os.ErrExist
 	ErrDestinationExists = os.ErrExist
 	ErrNotDir            = syscall.ENOTDIR
+	ErrIsDir             = syscall.EISDIR
 	ErrNotEmpty          = syscall.ENOTEMPTY
 )
 
@@ -120,4 +121,10 @@ func IsNotDir(err error) bool {
 func IsNotEmpty(err error) bool {
 	pathErr, ok := err.(*os.PathError)
 	return err == ErrNotEmpty || (ok && pathErr.Unwrap() == ErrNotEmpty)
+}
+
+// IsDirErr returns a boolean indicating whether the error is known to report when encountering a directory along a path intended for a new file. It is satisfied by ErrIsDir as well as some syscall errors.
+func IsDirErr(err error) bool {
+	pathErr, ok := err.(*os.PathError)
+	return err == ErrIsDir || (ok && pathErr.Unwrap() == ErrIsDir)
 }
