@@ -633,3 +633,17 @@ func TestMemFsChmod(t *testing.T) {
 		t.Error("chmod should not change file type. New mode =", info.Mode())
 	}
 }
+
+func TestMemFsRootPerm(t *testing.T) {
+	t.Parallel()
+
+	fs := NewMemMapFs()
+	info, err := fs.Stat("/")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if info.Mode() != os.ModeDir|0755 {
+		t.Error("Root '/' must be a directory with 755 permissions, found:", info.Mode())
+	}
+}
