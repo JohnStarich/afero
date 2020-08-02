@@ -756,3 +756,23 @@ func TestMemFsCreateIsDir(t *testing.T) {
 		t.Error("PathError.Err should be 'ErrIsDir':", pathErr.Err)
 	}
 }
+
+func TestMemFsMkdirModTime(t *testing.T) {
+	t.Parallel()
+
+	fs := NewMemMapFs()
+	err := fs.Mkdir("/foo", 0700)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	info, err := fs.Stat("/foo")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	elapsed := time.Since(info.ModTime())
+	if elapsed > 10*time.Second {
+		t.Error("Mod time should be close to now, but time apart was", elapsed)
+	}
+}
