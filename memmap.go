@@ -25,6 +25,8 @@ import (
 	"github.com/spf13/afero/mem"
 )
 
+const chmodBits = os.ModePerm | os.ModeSetuid | os.ModeSetgid | os.ModeSticky // Only a subset of bits are allowed to be changed. Documented under os.Chmod()
+
 type MemMapFs struct {
 	mu   sync.RWMutex
 	data map[string]*mem.FileData
@@ -121,6 +123,7 @@ func (m *MemMapFs) registerWithParent(f *mem.FileData) {
 }
 
 func (m *MemMapFs) Mkdir(name string, perm os.FileMode) error {
+	perm &= chmodBits
 	name = normalizePath(name)
 
 	m.mu.RLock()
@@ -145,6 +148,7 @@ func (m *MemMapFs) Mkdir(name string, perm os.FileMode) error {
 }
 
 func (m *MemMapFs) MkdirAll(path string, perm os.FileMode) error {
+	perm &= chmodBits
 	missingDirs, err := m.findMissingDirs(path)
 	if err != nil {
 		return err
@@ -233,6 +237,7 @@ func (m *MemMapFs) lockfreeOpen(name string) (*mem.FileData, error) {
 }
 
 func (m *MemMapFs) OpenFile(name string, flag int, perm os.FileMode) (File, error) {
+	perm &= chmodBits
 	chmod := false
 	file, err := m.openWrite(name)
 	if err == nil && (flag&os.O_EXCL > 0) {
@@ -410,7 +415,6 @@ func (m *MemMapFs) Stat(name string) (os.FileInfo, error) {
 }
 
 func (m *MemMapFs) Chmod(name string, mode os.FileMode) error {
-	const chmodBits = os.ModePerm | os.ModeSetuid | os.ModeSetgid | os.ModeSticky // Only a subset of bits are allowed to be changed. Documented under os.Chmod()
 	mode &= chmodBits
 
 	m.mu.RLock()

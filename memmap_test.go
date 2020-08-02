@@ -647,3 +647,69 @@ func TestMemFsRootPerm(t *testing.T) {
 		t.Error("Root '/' must be a directory with 755 permissions, found:", info.Mode())
 	}
 }
+
+func TestMemFsIllegalMkdir(t *testing.T) {
+	t.Parallel()
+
+	fs := NewMemMapFs()
+	err := fs.Mkdir("/foo", os.ModeSocket|0755)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	info, err := fs.Stat("/foo")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if info.Mode() != os.ModeDir|0755 {
+		t.Error("Mkdir must only set permission bits:", info.Mode())
+	}
+}
+
+func TestMemFsIllegalMkdirAll(t *testing.T) {
+	t.Parallel()
+
+	fs := NewMemMapFs()
+	err := fs.MkdirAll("/foo/bar", os.ModeSocket|0755)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	info, err := fs.Stat("/foo")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if info.Mode() != os.ModeDir|0755 {
+		t.Error("MkdirAll must only set permission bits:", info.Mode())
+	}
+
+	info, err = fs.Stat("/foo/bar")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if info.Mode() != os.ModeDir|0755 {
+		t.Error("MkdirAll must only set permission bits:", info.Mode())
+	}
+}
+
+func TestMemFsIllegalOpenFile(t *testing.T) {
+	t.Parallel()
+
+	fs := NewMemMapFs()
+	_, err := fs.OpenFile("/foo", os.O_CREATE, os.ModeSocket|0755)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	info, err := fs.Stat("/foo")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if info.Mode() != 0755 {
+		t.Error("OpenFile must only set permission bits:", info.Mode())
+	}
+}
