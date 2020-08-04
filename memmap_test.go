@@ -824,3 +824,28 @@ func TestMemFsChmodNormalizePath(t *testing.T) {
 		t.Error("Failed to run chmod:", err)
 	}
 }
+
+func TestMemFsMkdirAllNotDir(t *testing.T) {
+	fs := NewMemMapFs()
+
+	_, err := fs.Create("/a")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = fs.MkdirAll("/a/b", 0700)
+	if !IsNotDir(err) {
+		t.Error("MkdirAll should fail if parent is not a directory:", err)
+	}
+	pathErr, ok := err.(*os.PathError)
+	if !ok {
+		t.Fatalf("MkdirAll error should be a path error, found: %T", err)
+	}
+	if pathErr.Op != "mkdir" {
+		t.Error("Invalid op for mkdirall (mkdir op) error:", pathErr.Op)
+	}
+	if pathErr.Path != "/a" {
+		// path errors should be the same as OsFs, which is the passed in path and not a parent path
+		t.Error("Invalid path for mkdirall error:", pathErr.Path)
+	}
+}

@@ -201,7 +201,7 @@ func (m *MemMapFs) findMissingDirs(path string) ([]string, error) {
 			return missingDirs, nil
 		case !info.IsDir():
 			// a file is found where we want a directory, fail with ENOTDIR
-			return nil, &os.PathError{Op: "mkdirall", Path: currentPath, Err: ErrNotDir}
+			return nil, &os.PathError{Op: "mkdir", Path: currentPath, Err: ErrNotDir}
 		}
 	}
 	return missingDirs, nil
