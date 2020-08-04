@@ -266,7 +266,7 @@ func (m *MemMapFs) OpenFile(name string, flag int, perm os.FileMode) (File, erro
 	if err == nil && (flag&os.O_EXCL > 0) {
 		return nil, &os.PathError{Op: "open", Path: name, Err: ErrFileExists}
 	}
-	if os.IsNotExist(err) && (flag&os.O_CREATE > 0) {
+	if flag&os.O_CREATE > 0 {
 		file, err = m.Create(name)
 		chmod = true
 	}

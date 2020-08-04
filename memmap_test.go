@@ -849,3 +849,31 @@ func TestMemFsMkdirAllNotDir(t *testing.T) {
 		t.Error("Invalid path for mkdirall error:", pathErr.Path)
 	}
 }
+
+func TestMemFsOpenFileCreateExistingDir(t *testing.T) {
+	fs := NewMemMapFs()
+
+	err := fs.Mkdir("/a", 0755)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	_, err = fs.OpenFile("/a", os.O_CREATE|os.O_RDWR, 0755)
+	if err == nil {
+		t.Fatal("OpenFile on a directory should fail")
+	}
+
+	if !IsDirErr(err) {
+		t.Error("Error must be ErrIsDir, got", err)
+	}
+	pathErr, ok := err.(*os.PathError)
+	if !ok {
+		t.Fatalf("Error type must be os.PathError: %T", err)
+	}
+	if pathErr.Op != "open" {
+		t.Error("PathError.Op should be open, got", pathErr.Op)
+	}
+	if pathErr.Path != "/a" {
+		t.Error("PathError.Path should be /a, got", pathErr.Path)
+	}
+}
