@@ -877,3 +877,34 @@ func TestMemFsOpenFileCreateExistingDir(t *testing.T) {
 		t.Error("PathError.Path should be /a, got", pathErr.Path)
 	}
 }
+
+func TestMemFsOpenFileCreateExistingFile(t *testing.T) {
+	fs := NewMemMapFs()
+
+	_, err := fs.Create("/a")
+	if err != nil {
+		t.Fatal(err)
+	}
+	const (
+		originalFilePerm = os.FileMode(0700)
+		openFilePerm     = os.FileMode(0755)
+	)
+	err = fs.Chmod("/a", originalFilePerm)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	_, err = fs.OpenFile("/a", os.O_CREATE|os.O_RDWR, openFilePerm)
+	if err != nil {
+		t.Fatal("Unexpected error on OpenFile create for an existing file", err)
+	}
+
+	info, err := fs.Stat("/a")
+	if err != nil {
+		t.Fatal("Unexpected error stat'ing openfile:", err)
+	}
+
+	if info.Mode().Perm() != originalFilePerm {
+		t.Errorf("File permissions should not change on existing file. Should be %s, but found: %s", originalFilePerm.String(), info.Mode().Perm().String())
+	}
+}
