@@ -908,3 +908,32 @@ func TestMemFsOpenFileCreateExistingFile(t *testing.T) {
 		t.Errorf("File permissions should not change on existing file. Should be %s, but found: %s", originalFilePerm.String(), info.Mode().Perm().String())
 	}
 }
+
+func TestMemFsOpenFileTruncateReadOnly(t *testing.T) {
+	fs := NewMemMapFs()
+
+	f, err := fs.Create("/a")
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = f.Write([]byte("hello world"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := f.Close(); err != nil {
+		t.Fatal(err)
+	}
+
+	_, err = fs.OpenFile("/a", os.O_TRUNC, 0700)
+	if err != nil {
+		t.Fatal(err)
+	}
+	info, err := fs.Stat("/a")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if info.Size() != 0 {
+		t.Error("Truncate on read-only settings should work. Actual size after truncate open:", info.Size())
+	}
+}
