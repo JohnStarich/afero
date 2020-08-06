@@ -89,10 +89,23 @@ func TestPathErrors(t *testing.T) {
 	}
 
 	err = fs.Rename(path, path2)
-	checkPathError(t, err, "Rename")
+	checkLinkError(t, err, "Rename")
 
 	_, err = fs.Stat(path)
 	checkPathError(t, err, "Stat")
+}
+
+func checkLinkError(t *testing.T, err error, op string) {
+	t.Helper()
+	linkErr, ok := err.(*os.LinkError)
+	if !ok {
+		t.Error(op+":", err, "is not a os.LinkError")
+		return
+	}
+	_, ok = linkErr.Err.(*os.LinkError)
+	if ok {
+		t.Error(op+":", err, "contains another os.LinkError")
+	}
 }
 
 func checkPathError(t *testing.T, err error, op string) {

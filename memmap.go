@@ -365,12 +365,17 @@ func (m *MemMapFs) Rename(oldname, newname string) error {
 	oldname = normalizePath(oldname)
 	newname = normalizePath(newname)
 
+	info, err := m.Stat(newname)
+	if err == nil && info.IsDir() {
+		return &os.LinkError{Op: "rename", Old: oldname, New: newname, Err: ErrFileExists}
+	}
+
 	if oldname == newname {
 		return nil
 	}
 	if strings.HasPrefix(newname, oldname+FilePathSeparator) {
 		// new path must not be inside the old path
-		return &os.PathError{Op: "rename", Path: newname, Err: os.ErrInvalid}
+		return &os.LinkError{Op: "rename", Old: oldname, New: newname, Err: os.ErrInvalid}
 	}
 
 	m.mu.RLock()
@@ -383,12 +388,12 @@ func (m *MemMapFs) Rename(oldname, newname string) error {
 		_, ok = m.getData()[oldname]
 	}
 	if !ok {
-		return &os.PathError{Op: "rename", Path: oldname, Err: ErrFileNotFound}
+		return &os.LinkError{Op: "rename", Old: oldname, New: newname, Err: ErrFileNotFound}
 	}
 
 	newParentDir := filepath.Dir(newname)
 	if _, ok := m.getData()[newParentDir]; !ok {
-		return &os.PathError{Op: "rename", Path: newParentDir, Err: ErrFileNotFound}
+		return &os.LinkError{Op: "rename", Old: oldname, New: newname, Err: ErrFileNotFound}
 	}
 
 	// proceed with rename. if newname exists, delete it
