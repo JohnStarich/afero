@@ -109,6 +109,9 @@ func (f *File) Open() error {
 }
 
 func (f *File) Close() error {
+	if f.closed {
+		return os.ErrClosed
+	}
 	f.fileData.Lock()
 	f.closed = true
 	if !f.readOnly {

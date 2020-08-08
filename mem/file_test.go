@@ -205,3 +205,18 @@ func TestFileReadAtSeekOffset(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+func TestFileClose(t *testing.T) {
+	t.Parallel()
+
+	f := NewFileHandle(CreateFile("foo"))
+	err := f.Close()
+	if err != nil {
+		t.Error("First close should not error, but got:", err)
+	}
+
+	err = f.Close()
+	if err == nil {
+		t.Error("Second close should return os.ErrClosed")
+	}
+}
