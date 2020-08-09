@@ -254,3 +254,23 @@ func TestWriteAtNegativeOffset(t *testing.T) {
 		t.Error("Incorrect error message for writing at negative offset:", err.Error())
 	}
 }
+
+func TestReadAtMustEOF(t *testing.T) {
+	t.Parallel()
+
+	const fileContents = "hello world"
+	f := NewFileHandle(CreateFile("foo"))
+	_, err := f.Write([]byte(fileContents))
+	if err != nil {
+		t.Fatal(err)
+	}
+	buf := make([]byte, len(fileContents))
+	const off = 2
+	n, err := f.ReadAt(buf, off)
+	if n != len(fileContents)-off {
+		t.Error("Expected n bytes to be", len(fileContents)-off, "but got", n)
+	}
+	if err != io.EOF {
+		t.Error("ReadAt must return an error since n < len(buf). Must be EOF here, but got:", err)
+	}
+}

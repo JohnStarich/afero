@@ -203,6 +203,13 @@ func (f *File) ReadAt(b []byte, off int64) (n int, err error) {
 	atomic.StoreInt64(&f.at, off)
 	n, err = f.Read(b)
 	atomic.StoreInt64(&f.at, prev)
+	if n < len(b) && err == nil {
+		// ReadAt must return an error if n < len(b). See io.ReaderAt
+		if int(off)+n != len(f.fileData.data) {
+			panic("Nil error returned from Read while buffer is not EOF and not filled")
+		}
+		err = io.EOF
+	}
 	return
 }
 
