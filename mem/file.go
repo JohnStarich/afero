@@ -196,6 +196,9 @@ func (f *File) Read(b []byte) (n int, err error) {
 }
 
 func (f *File) ReadAt(b []byte, off int64) (n int, err error) {
+	if off < 0 {
+		return 0, &os.PathError{Op: "readat", Path: f.fileData.name, Err: errors.New("negative offset")}
+	}
 	prev := atomic.LoadInt64(&f.at)
 	atomic.StoreInt64(&f.at, off)
 	n, err = f.Read(b)
@@ -268,6 +271,9 @@ func (f *File) Write(b []byte) (n int, err error) {
 }
 
 func (f *File) WriteAt(b []byte, off int64) (n int, err error) {
+	if off < 0 {
+		return 0, &os.PathError{Op: "writeat", Path: f.fileData.name, Err: errors.New("negative offset")}
+	}
 	atomic.StoreInt64(&f.at, off)
 	return f.Write(b)
 }

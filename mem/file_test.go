@@ -220,3 +220,37 @@ func TestFileClose(t *testing.T) {
 		t.Error("Second close should return os.ErrClosed")
 	}
 }
+
+func TestReadAtNegativeOffset(t *testing.T) {
+	t.Parallel()
+
+	f := NewFileHandle(CreateFile("foo"))
+	buf := make([]byte, 10)
+	n, err := f.ReadAt(buf, -1)
+	if n != 0 {
+		t.Error("ReadAt with negative offset should not read any bytes, read", n)
+	}
+	if err == nil {
+		t.Fatal("Expected error when reading at negative offset")
+	}
+	if err.Error() != "readat foo: negative offset" {
+		t.Error("Incorrect error message for reading at negative offset:", err.Error())
+	}
+}
+
+func TestWriteAtNegativeOffset(t *testing.T) {
+	t.Parallel()
+
+	f := NewFileHandle(CreateFile("foo"))
+	buf := make([]byte, 10)
+	n, err := f.WriteAt(buf, -1)
+	if n != 0 {
+		t.Error("WriteAt with negative offset should not write any bytes, wrote", n)
+	}
+	if err == nil {
+		t.Fatal("Expected error when writing at negative offset")
+	}
+	if err.Error() != "writeat foo: negative offset" {
+		t.Error("Incorrect error message for writing at negative offset:", err.Error())
+	}
+}
