@@ -94,7 +94,7 @@ func (f *File) Seek(offset int64, whence int) (int64, error) {
 		return 0, syscall.EINVAL
 	}
 	if offset < 0 || offset > int64(f.zipfile.UncompressedSize64) {
-		return 0, afero.ErrOutOfRange
+		return 0, afero.ErrInvalid
 	}
 	f.offset = offset
 	return offset, nil

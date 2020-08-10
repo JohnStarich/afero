@@ -22,9 +22,9 @@ import (
 	"path/filepath"
 	"sync"
 	"sync/atomic"
+	"syscall"
+	"time"
 )
-
-import "time"
 
 const FilePathSeparator = string(filepath.Separator)
 
@@ -221,7 +221,7 @@ func (f *File) Truncate(size int64) error {
 		return &os.PathError{Op: "truncate", Path: f.fileData.name, Err: errors.New("file handle is read only")}
 	}
 	if size < 0 {
-		return ErrOutOfRange
+		return syscall.EINVAL
 	}
 	if size > int64(len(f.fileData.data)) {
 		diff := size - int64(len(f.fileData.data))
@@ -331,7 +331,6 @@ func (s *FileInfo) Size() int64 {
 
 var (
 	ErrFileClosed        = errors.New("File is closed")
-	ErrOutOfRange        = errors.New("Out of range")
 	ErrTooLarge          = errors.New("Too large")
 	ErrFileNotFound      = os.ErrNotExist
 	ErrFileExists        = os.ErrExist

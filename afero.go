@@ -101,7 +101,7 @@ type Fs interface {
 
 var (
 	ErrFileClosed        = errors.New("File is closed")
-	ErrOutOfRange        = errors.New("Out of range")
+	ErrInvalid           = os.ErrInvalid
 	ErrTooLarge          = errors.New("Too large")
 	ErrFileNotFound      = os.ErrNotExist
 	ErrFileExists        = os.ErrExist
@@ -127,4 +127,11 @@ func IsNotEmpty(err error) bool {
 func IsDirErr(err error) bool {
 	pathErr, ok := err.(*os.PathError)
 	return err == ErrIsDir || (ok && pathErr.Unwrap() == ErrIsDir)
+}
+
+// IsInvalid returns a boolean indicating whether the error is known to report when receiving an invalid argument for a range. It is satisfied by ErrInvalid as well as some syscall errors.
+func IsInvalid(err error) bool {
+	pathErr, ok := err.(*os.PathError)
+	return err == ErrInvalid || (ok && pathErr.Unwrap() == ErrInvalid) ||
+		err == syscall.EINVAL || (ok && pathErr.Unwrap() == syscall.EINVAL)
 }

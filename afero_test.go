@@ -745,3 +745,25 @@ func TestIsDirErr(t *testing.T) {
 		t.Error("IsDirErr(PathError{ErrIsDir}) should be true")
 	}
 }
+
+func TestIsInvalid(t *testing.T) {
+	if IsInvalid(nil) {
+		t.Error("IsInvalid(nil) should be false")
+	}
+
+	if !IsInvalid(ErrInvalid) {
+		t.Error("IsInvalid(ErrInvalid) should be true")
+	}
+
+	if !IsInvalid(&os.PathError{Err: ErrInvalid}) {
+		t.Error("IsInvalid(PathError{ErrInvalid}) should be true")
+	}
+
+	if !IsInvalid(syscall.EINVAL) {
+		t.Error("IsInvalid(syscall.EINVAL) should be true")
+	}
+
+	if !IsInvalid(&os.PathError{Err: syscall.EINVAL}) {
+		t.Error("IsInvalid(PathError{syscall.EINVAL}) should be true")
+	}
+}
