@@ -221,7 +221,7 @@ func (f *File) Truncate(size int64) error {
 		return &os.PathError{Op: "truncate", Path: f.fileData.name, Err: errors.New("file handle is read only")}
 	}
 	if size < 0 {
-		return syscall.EINVAL
+		return &os.PathError{Op: "truncate", Path: f.fileData.name, Err: syscall.EINVAL}
 	}
 	if size > int64(len(f.fileData.data)) {
 		diff := size - int64(len(f.fileData.data))
