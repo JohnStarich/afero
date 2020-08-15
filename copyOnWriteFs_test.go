@@ -78,3 +78,24 @@ func TestCopyOnWriteMkdir(t *testing.T) {
 		t.Fatal("Mkdir should fail if parent directory does not exist:", err)
 	}
 }
+
+func TestCopyOnWriteCreateNoParent(t *testing.T) {
+	base := NewMemMapFs()
+	layer := NewMemMapFs()
+
+	fs := NewCopyOnWriteFs(NewReadOnlyFs(base), layer)
+	_, err := fs.Create("foo/bar")
+	pathErr, ok := err.(*os.PathError)
+	if !ok {
+		t.Fatal("Create should fail with *os.PathError when parent directory does not exist")
+	}
+	if pathErr.Op != "open" {
+		t.Error("Create errors should be Op 'open', found:", pathErr.Op)
+	}
+	if !os.IsNotExist(pathErr.Err) {
+		t.Error("Error should be 'does not exist' but found:", pathErr.Err)
+	}
+	if pathErr.Path != "foo/bar" {
+		t.Error("Error path should 'foo/bar', found:", pathErr.Path)
+	}
+}

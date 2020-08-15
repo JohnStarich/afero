@@ -218,6 +218,9 @@ func (u *CopyOnWriteFs) OpenFile(name string, flag int, perm os.FileMode) (File,
 
 		isaDir, err = IsDir(u.layer, dir)
 		if err != nil {
+			if pathErr, ok := err.(*os.PathError); ok {
+				pathErr.Path = name
+			}
 			return nil, err
 		}
 		if isaDir {
