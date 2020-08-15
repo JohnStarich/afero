@@ -204,7 +204,7 @@ func (f *UnionFile) Readdir(c int) (ofi []os.FileInfo, err error) {
 	}
 
 	defer func() { f.off += c }()
-	return f.files[f.off:c], nil
+	return f.files[f.off : f.off+c], nil
 }
 
 func (f *UnionFile) Readdirnames(c int) ([]string, error) {

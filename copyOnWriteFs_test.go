@@ -3,6 +3,7 @@ package afero
 import (
 	"os"
 	"path/filepath"
+	"sort"
 	"testing"
 )
 
@@ -97,5 +98,57 @@ func TestCopyOnWriteCreateNoParent(t *testing.T) {
 	}
 	if pathErr.Path != "foo/bar" {
 		t.Error("Error path should 'foo/bar', found:", pathErr.Path)
+	}
+}
+
+func TestCopyOnWriteReaddirBatches(t *testing.T) {
+	base := NewMemMapFs()
+	layer := NewMemMapFs()
+
+	fs := NewCopyOnWriteFs(NewReadOnlyFs(base), layer)
+	_, err := fs.Create("/foo")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = fs.Mkdir("/bar", 0700)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	f, err := fs.Open("/")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	infos1, err := f.Readdir(1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(infos1) != 1 {
+		t.Error("First readdir should have exactly one item, found", len(infos1))
+	}
+
+	infos2, err := f.Readdir(1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(infos2) != 1 {
+		t.Error("First readdir should have exactly one item, found", len(infos2))
+	}
+
+	infos := append(infos1, infos2...)
+	sort.Slice(infos, func(a, b int) bool {
+		return infos[a].Name() < infos[b].Name()
+	})
+
+	if len(infos) != 2 {
+		t.Fatal("Incorrect number of infos for directory with 2 items:", infos)
+	}
+	if infos[0].Name() != "bar" {
+		t.Error("Directory 'bar' not found", infos[1].Name())
+	}
+	if infos[1].Name() != "foo" {
+		t.Error("File 'foo' not found", infos[1].Name())
 	}
 }
