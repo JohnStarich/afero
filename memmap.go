@@ -273,12 +273,14 @@ func (m *MemMapFs) OpenFile(name string, flag int, perm os.FileMode) (File, erro
 	if err != nil {
 		return nil, err
 	}
-	info, err := file.Stat()
-	if err != nil {
-		return nil, err
-	}
-	if info.IsDir() {
-		return nil, &os.PathError{Op: "open", Path: name, Err: ErrIsDir}
+	if flag != os.O_RDONLY {
+		info, err := file.Stat()
+		if err != nil {
+			return nil, err
+		}
+		if info.IsDir() {
+			return nil, &os.PathError{Op: "open", Path: name, Err: ErrIsDir}
+		}
 	}
 	if flag == os.O_RDONLY {
 		file = mem.NewReadOnlyFileHandle(file.(*mem.File).Data())

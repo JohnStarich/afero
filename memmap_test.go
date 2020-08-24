@@ -873,7 +873,7 @@ func TestMemFsOpenFileCreateExistingDir(t *testing.T) {
 
 	_, err = fs.OpenFile("/a", os.O_CREATE|os.O_RDWR, 0755)
 	if err == nil {
-		t.Fatal("OpenFile on a directory should fail")
+		t.Fatal("OpenFile on a directory (non read-only) should fail")
 	}
 
 	if !IsDirErr(err) {
@@ -888,6 +888,20 @@ func TestMemFsOpenFileCreateExistingDir(t *testing.T) {
 	}
 	if pathErr.Path != "/a" {
 		t.Error("PathError.Path should be /a, got", pathErr.Path)
+	}
+}
+
+func TestMemFsOpenFileExistingDir(t *testing.T) {
+	fs := NewMemMapFs()
+
+	err := fs.Mkdir("/a", 0755)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	_, err = fs.OpenFile("/a", os.O_RDONLY, 0000)
+	if err != nil {
+		t.Error("OpenFile on a directory with read-only should succeed, got:", err)
 	}
 }
 
