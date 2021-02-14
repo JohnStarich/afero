@@ -162,12 +162,24 @@ func (m *MemMapFs) Mkdir(name string, perm os.FileMode) error {
 	}
 
 	m.mu.Lock()
+	defer m.mu.Unlock()
+	data := m.getData()
+	if _, ok := data[name]; ok {
+		return &os.PathError{Op: "mkdir", Path: name, Err: ErrFileExists}
+	}
+	parent := filepath.Dir(name)
+	parentFile, ok := data[parent]
+	if !ok {
+		return &os.PathError{Op: "mkdir", Path: parent, Err: os.ErrNotExist}
+	}
+	if !mem.NewReadOnlyFileHandle(parentFile).Info().IsDir() {
+		return &os.PathError{Op: "mkdir", Path: parent, Err: ErrNotDir}
+	}
 	item := mem.CreateDir(name)
-	m.getData()[name] = item
+	data[name] = item
 	m.registerWithParent(item)
-	m.mu.Unlock()
-
-	return m.unrestrictedChmod(name, perm|os.ModeDir)
+	mem.SetMode(item, perm|os.ModeDir)
+	return nil
 }
 
 func (m *MemMapFs) MkdirAll(path string, perm os.FileMode) error {
